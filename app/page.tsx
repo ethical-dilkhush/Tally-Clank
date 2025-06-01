@@ -8,9 +8,14 @@ import AutoBuyTab from "@/components/auto-buy-tab"
 import TrendingTab from "@/components/trending-tab"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import TabNavigation from "@/components/tab-navigation"
+import LeftSidebar from "@/components/left-sidebar"
+import MobileNavigation from "@/components/mobile-navigation"
 import Pagination from "@/components/pagination"
 import WatchListTab from "@/components/watch-list-tab"
+import MyTokensTab from "@/components/my-tokens-tab"
+import AllTallyClankTab from "@/components/all-tally-clank-tab"
+import BackgroundSync from "@/components/background-sync"
+import { SidebarProvider, useSidebar } from "@/components/sidebar-context"
 
 interface Token {
   id: string
@@ -41,7 +46,8 @@ interface PaginationData {
   totalPages: number
 }
 
-export default function TokenDashboard() {
+function TokenDashboardContent() {
+  const { isCollapsed } = useSidebar()
   const [tokens, setTokens] = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -313,6 +319,26 @@ export default function TokenDashboard() {
       )
     }
 
+    if (currentTab === "mytokens") {
+      return (
+        <MyTokensTab
+          onTokenClick={handleTokenClick}
+          wishlistedTokens={wishlistedTokens}
+          onWishlistToggle={handleWishlistToggle}
+        />
+      )
+    }
+
+    if (currentTab === "tallyclank") {
+      return (
+        <AllTallyClankTab
+          onTokenClick={handleTokenClick}
+          wishlistedTokens={wishlistedTokens}
+          onWishlistToggle={handleWishlistToggle}
+        />
+      )
+    }
+
     return (
       <>
         {/* Main Token List Section - Memoized Component */}
@@ -340,17 +366,25 @@ export default function TokenDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Background Sync - Automatically syncs tokens every 10 seconds */}
+      <BackgroundSync enabled={true} intervalSeconds={10} />
+      
       <Header
         onSearch={handleSearch}
         isSearching={searching}
-        searchResults={searchResults}
-        searching={searching}
-        clearSearch={clearSearch}
       />
 
-      <main className="container mx-auto py-8 px-4 flex-grow">
-        <TabNavigation onTabChange={handleTabChange} />
+      {/* Left Sidebar Navigation */}
+      <LeftSidebar onTabChange={handleTabChange} activeTab={currentTab} />
 
+      {/* Mobile Navigation */}
+      <MobileNavigation onTabChange={handleTabChange} activeTab={currentTab} />
+
+      {/* Main Content Area with Dynamic Left Margin for Sidebar */}
+      <main className={`transition-all duration-300 container mx-auto py-8 px-4 flex-grow ${
+        // No margin on mobile (sidebar hidden), dynamic margin on desktop
+        isCollapsed ? 'md:ml-16' : 'md:ml-64'
+      }`}>
         {/* Search Results Section - Memoized Component */}
         {searchQuery && searchResults && (
           <SearchResults
@@ -374,5 +408,13 @@ export default function TokenDashboard() {
 
       <Footer />
     </div>
+  )
+}
+
+export default function TokenDashboard() {
+  return (
+    <SidebarProvider>
+      <TokenDashboardContent />
+    </SidebarProvider>
   )
 }

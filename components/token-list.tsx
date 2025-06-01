@@ -9,7 +9,23 @@ interface Token {
   id: string
   name: string
   symbol: string
-  // Add other properties as needed
+  price: number
+  marketCap: number
+  volume: number
+  change24h: number
+  imageUrl: string
+  // Optional properties
+  img_url?: string
+  cast_hash?: string
+  contractAddress?: string
+  blockchain?: string
+  totalSupply?: number
+  circulatingSupply?: number
+  description?: string
+  website?: string
+  explorer?: string
+  createdAt?: string | number
+  [key: string]: any
 }
 
 interface TokenListProps {
@@ -41,7 +57,7 @@ const TokenList = memo(function TokenList({
     <div className="relative">
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
-          <h2 className="text-2xl font-semibold">All Tokens</h2>
+          <h2 className="text-2xl font-semibold">New Created Tokens</h2>
           <div className="absolute -bottom-2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
         </div>
         <div className="flex items-center">
