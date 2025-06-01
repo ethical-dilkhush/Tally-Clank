@@ -130,7 +130,6 @@ export default function LeftSidebar({ onTabChange, activeTab = "all" }: LeftSide
         <div className="absolute bottom-4 left-2 right-2 p-3 bg-muted/30 rounded-lg border border-card-border">
           <div className="text-xs text-center text-muted-foreground">
             <p className="font-medium">Tally Clank</p>
-            <p>Token Analytics Dashboard</p>
           </div>
         </div>
       )}
