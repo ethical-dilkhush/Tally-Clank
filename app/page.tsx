@@ -10,6 +10,7 @@ import Header from "@/components/header"
 import Footer from "@/components/footer"
 import LeftSidebar from "@/components/left-sidebar"
 import MobileNavigation from "@/components/mobile-navigation"
+// import MobileNavigationBottom from "@/components/mobile-navigation-bottom" // Alternative bottom tab bar
 import Pagination from "@/components/pagination"
 import WatchListTab from "@/components/watch-list-tab"
 import MyTokensTab from "@/components/my-tokens-tab"
@@ -379,12 +380,13 @@ function TokenDashboardContent() {
 
       {/* Mobile Navigation */}
       <MobileNavigation onTabChange={handleTabChange} activeTab={currentTab} />
+      {/* Alternative Bottom Tab Bar: <MobileNavigationBottom onTabChange={handleTabChange} activeTab={currentTab} /> */}
 
       {/* Main Content Area with Dynamic Left Margin for Sidebar */}
       <main className={`transition-all duration-300 container mx-auto py-8 px-4 flex-grow ${
         // No margin on mobile (sidebar hidden), dynamic margin on desktop
         isCollapsed ? 'md:ml-16' : 'md:ml-64'
-      }`}>
+      } pb-20 md:pb-8`}> {/* pb-20 for bottom nav, md:pb-8 for desktop */}
         {/* Search Results Section - Memoized Component */}
         {searchQuery && searchResults && (
           <SearchResults

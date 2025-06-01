@@ -62,7 +62,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange, isLo
         <Button
           onClick={handleLoadMore}
           disabled={isLoading}
-          className="bg-card/60 backdrop-blur-sm border-card-border hover:bg-card/80 transition-colors px-6 py-2 rounded-full shadow-sm hover:shadow-md"
+          className="bg-card/60 backdrop-blur-sm border-card-border  hover:bg-card/80 transition-colors px-6 py-2 rounded-full shadow-sm hover:shadow-md"
         >
           {isLoading ? (
             <div className="flex items-center gap-2">
@@ -70,8 +70,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange, isLo
               <span>Loading more...</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <ArrowDown className="h-4 w-4" />
+            <div className="flex items-center gap-2 ">
+              <ArrowDown className="h-4 w-4 outline-2 outline-offset-2 outline-solid ..." />
               <span>Load More</span>
             </div>
           )}
