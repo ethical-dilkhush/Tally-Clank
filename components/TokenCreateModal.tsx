@@ -4,13 +4,34 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, X, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { formatUnits } from 'viem';
+
+const TALLY_CONTRACT_ADDRESS = '0xC2B75dE530CDd44321D51E0842A21a76dD4C6B07' as const;
+const REQUIRED_TALLY_BALANCE = 5_000_000;
+
+const ERC20_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'decimals',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint8' }],
+  },
+] as const;
 
 // Form validation schema
 const tokenFormSchema = z.object({
@@ -35,6 +56,28 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentStatus, setDeploymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [deploymentMessage, setDeploymentMessage] = useState('');
+
+  // TALLY token balance check
+  const { data: decimals } = useReadContract({
+    address: TALLY_CONTRACT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'decimals',
+    query: { enabled: isConnected },
+  });
+
+  const { data: balance, isLoading: tallyLoading } = useReadContract({
+    address: TALLY_CONTRACT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address },
+  });
+
+  const hasEnoughTokens = () => {
+    if (!balance || !decimals || !isConnected) return false;
+    const balanceInTokens = parseFloat(formatUnits(balance, decimals));
+    return balanceInTokens >= REQUIRED_TALLY_BALANCE;
+  };
 
   const {
     register,
@@ -130,11 +173,18 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
     return await response.json();
   };
 
-  // Handle form submission
+  // Handle form submission with TALLY balance check
   const onSubmit = async (data: TokenFormData) => {
     if (!isConnected) {
       setDeploymentStatus('error');
       setDeploymentMessage('Please connect your wallet first');
+      return;
+    }
+
+    // Check TALLY token balance
+    if (!hasEnoughTokens()) {
+      setDeploymentStatus('error');
+      setDeploymentMessage('You need at least 5,000,000 TALLY tokens to create a token. Please purchase TALLY tokens and try again.');
       return;
     }
 
@@ -200,16 +250,17 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(80vh - 120px)' }}>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pr-2">
+        <div className="overflow-y-auto scrollbar-hide p-1" style={{ maxHeight: 'calc(80vh - 120px)' }}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Token Name */}
             <div>
               <Label htmlFor="name">Token Name *</Label>
               <Input
                 id="name"
                 {...register('name')}
-                placeholder="My Awesome Token"
+                placeholder="Name"
                 disabled={isUploading || isDeploying}
+                className="w-full border border-input"
               />
               {errors.name && (
                 <p className="text-sm text-destructive mt-1">{errors.name.message}</p>
@@ -222,8 +273,9 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
               <Input
                 id="symbol"
                 {...register('symbol')}
-                placeholder="MAT"
+                placeholder="Ticker"
                 disabled={isUploading || isDeploying}
+                className="w-full border border-input"
               />
               {errors.symbol && (
                 <p className="text-sm text-destructive mt-1">{errors.symbol.message}</p>
@@ -278,6 +330,7 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
                 placeholder="Describe your token..."
                 rows={3}
                 disabled={isUploading || isDeploying}
+                className="w-full border border-input"
               />
             </div>
 
@@ -290,6 +343,7 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
                 placeholder="https://twitter.com/mytoken&#10;https://discord.gg/mytoken"
                 rows={3}
                 disabled={isUploading || isDeploying}
+                className="w-full border border-input"
               />
             </div>
 

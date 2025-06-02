@@ -1,12 +1,33 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useAccount, useBalance, useConnect, useDisconnect } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useReadContract } from 'wagmi';
 import { injected, metaMask } from 'wagmi/connectors';
 import { createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { Button } from '@/components/ui/button';
 import { Wallet, ChevronDown, Copy } from 'lucide-react';
+import { formatUnits } from 'viem';
+
+const TALLY_CONTRACT_ADDRESS = '0xC2B75dE530CDd44321D51E0842A21a76dD4C6B07' as const;
+const REQUIRED_TALLY_BALANCE = 5_000_000;
+
+const ERC20_ABI = [
+  {
+    name: 'balanceOf',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'decimals',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint8' }],
+  },
+] as const;
 
 export const config = createConfig({
   chains: [base],
@@ -27,9 +48,28 @@ export function WalletConnect() {
   const { address, isConnected, chain } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: balance } = useBalance({
-    address,
+
+  // TALLY token balance check
+  const { data: decimals } = useReadContract({
+    address: TALLY_CONTRACT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'decimals',
+    query: { enabled: isConnected },
   });
+
+  const { data: balance, isLoading: tallyLoading } = useReadContract({
+    address: TALLY_CONTRACT_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address },
+  });
+
+  const hasEnoughTokens = () => {
+    if (!balance || !decimals || !isConnected) return false;
+    const balanceInTokens = parseFloat(formatUnits(balance, decimals));
+    return balanceInTokens >= REQUIRED_TALLY_BALANCE;
+  };
 
   // Ensure component is mounted to prevent hydration mismatch
   useEffect(() => {
@@ -65,20 +105,9 @@ export function WalletConnect() {
     }
   };
 
-  const formatBalance = (balance: any) => {
-    if (!balance?.formatted) return '0.0000 ETH';
-    
-    const value = parseFloat(balance.formatted);
-    if (value === 0) return '0.0000 ETH';
-    
-    // Show more precision for small amounts, less for larger amounts
-    if (value < 0.001) {
-      return `${value.toFixed(6)} ETH`;
-    } else if (value < 1) {
-      return `${value.toFixed(4)} ETH`;
-    } else {
-      return `${value.toFixed(3)} ETH`;
-    }
+  const formatTallyBalance = () => {
+    if (tallyLoading) return 'Loading...';
+    return hasEnoughTokens() ? '5M+ TALLY' : '< 5M TALLY';
   };
 
   const copyAddress = async () => {
@@ -137,7 +166,7 @@ export function WalletConnect() {
           >
             <div className="flex flex-col items-start">
               <div className="text-xs font-medium">
-                {formatBalance(balance)}
+                {formatTallyBalance()}
               </div>
               <div className="text-xs text-muted-foreground">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
