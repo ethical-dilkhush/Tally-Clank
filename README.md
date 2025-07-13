@@ -89,4 +89,4 @@ This project is licensed under the MIT License.
 
 ## Contact
 
-For support or collaboration, reach out via X (Twitter) at [@yourhandle](https://twitter.com/tallyclank)
+For support or collaboration, reach out via X (Twitter) at (https://twitter.com/tally_clank)
