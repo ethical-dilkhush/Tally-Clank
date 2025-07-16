@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     // Get pagination parameters from the URL
     const { searchParams } = new URL(request.url)
     const page = Number.parseInt(searchParams.get("page") || "1", 10)
-    const limit = Number.parseInt(searchParams.get("limit") || "12", 10)
+    const limit = Math.min(Number.parseInt(searchParams.get("limit") || "12", 10), 20)
     const forceRefresh = searchParams.get("forceRefresh") === "true"
 
     // Calculate offset for pagination
@@ -30,10 +30,11 @@ export async function GET(request: Request) {
     // Add a timestamp to bust any caching
     // Use the trending endpoint specifically
     const response = await fetch(
-      `https://www.clanker.world/api/tokens/trending?offset=${offset}&limit=${limit}&_t=${now}`,
+      `https://www.clanker.world/api/tokens/trending?page=${page}&limit=${limit}&_t=${now}`,
       {
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": "tally-clank-nlv03n8n20fn09n9c2n081",
           "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
           Expires: "0",
@@ -53,11 +54,12 @@ export async function GET(request: Request) {
 
     // Determine the structure of the data and extract the tokens array
     let tokensArray = []
-    let totalCount = 100 // Default total count if not provided by API
+    let totalCount = 0 // Default total count if not provided by API
 
     // Case 1: If rawData is already an array
     if (Array.isArray(rawData)) {
       tokensArray = rawData
+      totalCount = rawData.length
     }
     // Case 2: If rawData is an object with a data/items/tokens property
     else if (rawData && typeof rawData === "object") {
@@ -68,7 +70,7 @@ export async function GET(request: Request) {
       else tokensArray = [rawData]
 
       // Try to extract total count for pagination
-      totalCount = rawData.total || rawData.totalCount || rawData.count || 100
+      totalCount = rawData.total || rawData.totalCount || rawData.count || 50000
     }
 
     // Log the first token to see its structure

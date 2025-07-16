@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch tokens from Clanker API
     console.log('📡 Fetching from Clanker API...');
-    const response = await fetch(`${CLANKER_API_BASE_URL}?limit=100`, {
+    const response = await fetch(`${CLANKER_API_BASE_URL}?limit=20`, {
       method: 'GET',
       headers: {
         'x-api-key': CLANKER_API_KEY,

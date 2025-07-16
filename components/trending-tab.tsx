@@ -2,6 +2,7 @@
 
 import { TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
+import Pagination from "@/components/pagination"
 
 interface Token {
   id: string
@@ -33,16 +34,23 @@ export default function TrendingTab({ onTokenClick, wishlistedTokens = [], onWis
   const [trendingTokens, setTrendingTokens] = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const fetchTrending = async (pageNum: number, append: boolean = false) => {
-    if (pageNum === 1) {
-      setLoading(true)
-    } else {
-      setLoadingMore(true)
+  // Format large numbers for display
+  const formatLargeNumber = (value: number) => {
+    if (value >= 1_000_000_000) {
+      return `${(value / 1_000_000_000).toFixed(2)}B`
+    } else if (value >= 1_000_000) {
+      return `${(value / 1_000_000).toFixed(2)}M`
+    } else if (value >= 1_000) {
+      return `${(value / 1_000).toFixed(2)}K`
     }
+    return value.toFixed(2)
+  }
+
+  const fetchTrending = async (pageNum: number) => {
+    setLoading(true)
     setError(null)
     
     try {
@@ -57,41 +65,93 @@ export default function TrendingTab({ onTokenClick, wishlistedTokens = [], onWis
       const data = await res.json();
       console.log('API Response:', data);
       
-      if (!data.trending || !Array.isArray(data.trending)) {
-        throw new Error('Invalid API response format');
+      // Handle the actual data structure returned by the trending API
+      let tokensArray = [];
+      
+      if (Array.isArray(data)) {
+        tokensArray = data;
+      } else if (data && Array.isArray(data.data)) {
+        tokensArray = data.data;
+      } else if (data && Array.isArray(data.tokens)) {
+        tokensArray = data.tokens;
+      } else if (data && data.trending && Array.isArray(data.trending)) {
+        // Handle the complex structure with trending pools and tokens
+        tokensArray = data.trending.map((pool: any) => {
+          const tokenData = data.tokens ? data.tokens[pool.attributes?.address] : null;
+          
+          // Handle metadata parsing safely
+          let description = '';
+          if (tokenData?.metadata) {
+            try {
+              // Check if metadata is already an object or a string
+              if (typeof tokenData.metadata === 'string') {
+                description = JSON.parse(tokenData.metadata).description || '';
+              } else if (typeof tokenData.metadata === 'object' && tokenData.metadata.description) {
+                description = tokenData.metadata.description || '';
+              }
+            } catch (error) {
+              console.warn('Failed to parse metadata:', error, 'metadata value:', tokenData.metadata);
+              description = '';
+            }
+          }
+          
+          return {
+            id: pool.id,
+            name: tokenData?.name || pool.attributes?.name?.split(' / ')[0] || 'Unknown',
+            symbol: tokenData?.symbol || pool.attributes?.name?.split(' / ')[0] || 'UNK',
+            price: parseFloat(pool.attributes?.base_token_price_usd || '0'),
+            marketCap: parseFloat(pool.attributes?.market_cap_usd || '0'),
+            volume: parseFloat(pool.attributes?.h24_volume_usd || '0'),
+            change24h: parseFloat(pool.attributes?.price_change_percentage?.h24 || '0'),
+            imageUrl: tokenData?.img_url || null,
+            contractAddress: tokenData?.contract_address,
+            blockchain: pool.relationships?.network?.data?.id || 'base',
+            totalSupply: null,
+            circulatingSupply: null,
+            description: description,
+            website: '',
+            explorer: tokenData?.contract_address ? `https://basescan.org/address/${tokenData.contract_address}` : '',
+            createdAt: tokenData?.created_at || Date.now()
+          };
+        });
+      } else {
+        throw new Error('Invalid API response format - no recognizable token data');
       }
       
-      // Transform the API response to match our Token interface
-      const transformedTokens = data.trending.map((pool: any) => {
-        const tokenData = data.tokens[pool.attributes.address];
-        return {
-          id: pool.id,
-          name: tokenData?.name || pool.attributes.name.split(' / ')[0],
-          symbol: tokenData?.symbol || pool.attributes.name.split(' / ')[0],
-          price: parseFloat(pool.attributes.base_token_price_usd),
-          marketCap: parseFloat(pool.attributes.market_cap_usd) || 0,
-          volume: parseFloat(pool.attributes.h24_volume_usd),
-          change24h: parseFloat(pool.attributes.price_change_percentage.h24),
-          imageUrl: tokenData?.img_url || null,
-          contractAddress: tokenData?.contract_address,
-          blockchain: pool.relationships.network.data.id,
-          totalSupply: null,
-          circulatingSupply: null,
-          description: tokenData?.metadata ? JSON.parse(tokenData.metadata).description : '',
-          website: '',
-          explorer: `https://basescan.org/address/${tokenData?.contract_address}`,
-          createdAt: tokenData?.created_at
-        };
-      });
+      // Transform simple token array to our Token interface
+      const transformedTokens = tokensArray.length > 0 && tokensArray[0].attributes ? 
+        tokensArray : // Already transformed above
+        tokensArray.map((token: any) => ({
+          id: token.id || String(Math.random()),
+          name: token.name || 'Unknown Token',
+          symbol: token.symbol || 'UNK',
+          price: token.price || 0,
+          marketCap: token.marketCap || token.market_cap || 0,
+          volume: token.volume || token.volume24h || 0,
+          change24h: token.change24h || token.priceChange24h || 0,
+          imageUrl: token.imageUrl || token.img_url || null,
+          contractAddress: token.contractAddress || token.contract_address,
+          blockchain: token.blockchain || 'base',
+          totalSupply: token.totalSupply || null,
+          circulatingSupply: token.circulatingSupply || null,
+          description: token.description || '',
+          website: token.website || '',
+          explorer: token.explorer || '',
+          createdAt: token.createdAt || Date.now()
+        }));
 
-      setTrendingTokens(prev => append ? [...prev, ...transformedTokens] : transformedTokens);
-      setHasMore(transformedTokens.length > 0);
+      setTrendingTokens(transformedTokens);
+      
+      // Calculate total pages (assuming 12 tokens per page and estimating total)
+      const tokensPerPage = 12;
+      const estimatedTotal = Math.max(tokensArray.length * 10, 100); // Estimate based on current results
+      setTotalPages(Math.ceil(estimatedTotal / tokensPerPage));
+      
     } catch (err: any) {
       console.error('Error fetching trending tokens:', err);
       setError(err.message || 'Error fetching trending tokens');
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
   }
 
@@ -99,12 +159,11 @@ export default function TrendingTab({ onTokenClick, wishlistedTokens = [], onWis
     fetchTrending(1);
   }, []);
 
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchTrending(nextPage, true);
-    }
+  const handlePageChange = (pageNum: number) => {
+    setCurrentPage(pageNum);
+    fetchTrending(pageNum);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
@@ -164,14 +223,23 @@ export default function TrendingTab({ onTokenClick, wishlistedTokens = [], onWis
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <div>
-                    <div className="text-xs text-muted-foreground">Price</div>
-                    <div className="font-mono">${token.price?.toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
+                    <div className="text-xs text-muted-foreground">Market Cap</div>
+                    <div className="font-mono">${token.marketCap ? formatLargeNumber(token.marketCap) : 'N/A'}</div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">24h Change</div>
                     <div className={token.change24h > 0 ? "text-green-500" : token.change24h < 0 ? "text-red-500" : ""}>
                       {token.change24h > 0 ? '+' : ''}{token.change24h?.toFixed(2)}%
                     </div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Volume (24h)</div>
+                    <div className="font-mono">${token.volume ? formatLargeNumber(token.volume) : 'N/A'}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {/* Empty space to maintain layout balance */}
                   </div>
                 </div>
                 {onWishlistToggle && (
@@ -187,23 +255,14 @@ export default function TrendingTab({ onTokenClick, wishlistedTokens = [], onWis
             ))}
           </div>
           
-          {hasMore && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loadingMore ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Loading more...
-                  </div>
-                ) : (
-                  'Load More'
-                )}
-              </button>
-            </div>
+          {/* Pagination Controls */}
+          {!loading && totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              isLoading={loading}
+            />
           )}
         </>
       )}

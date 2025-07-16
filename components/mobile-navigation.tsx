@@ -12,7 +12,8 @@ import {
   Building,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from "lucide-react"
 
 interface MobileNavigationProps {
@@ -50,6 +51,11 @@ const navigationItems = [
     id: "autobuy",
     label: "Auto Buy",
     icon: Zap
+  },
+  {
+    id: "worldchat",
+    label: "World Chat",
+    icon: MessageSquare
   }
 ]
 
