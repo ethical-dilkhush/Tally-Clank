@@ -8,7 +8,8 @@ import {
   BookmarkCheck, 
   Zap,
   Coins,
-  Building
+  Building,
+  MessageSquare
 } from "lucide-react"
 
 interface MobileNavigationBottomProps {
@@ -46,13 +47,18 @@ const navigationItems = [
     id: "autobuy",
     label: "Auto Buy",
     icon: Zap
+  },
+  {
+    id: "worldchat",
+    label: "Chat",
+    icon: MessageSquare
   }
 ]
 
 export default function MobileNavigationBottom({ onTabChange, activeTab = "all" }: MobileNavigationBottomProps) {
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-card-border safe-area-bottom">
-      <div className="grid grid-cols-6 gap-1 p-2">
+      <div className="grid grid-cols-7 gap-1 p-2">
         {navigationItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id

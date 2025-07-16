@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Debug: Fetching raw Clanker data...');
 
     // Fetch tokens from Clanker API
-    const response = await fetch(`${CLANKER_API_BASE_URL}?limit=100`, {
+    const response = await fetch(`${CLANKER_API_BASE_URL}?limit=20`, {
       method: 'GET',
       headers: {
         'x-api-key': CLANKER_API_KEY,

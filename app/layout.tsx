@@ -20,10 +20,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-gradient-to-b from-background to-background/80 bg-fixed">
+    <html lang="en" suppressHydrationWarning={true}>
+      <body className="min-h-screen bg-gradient-to-b from-background to-background/80 bg-fixed" suppressHydrationWarning={true}>
         <Providers>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
             <div className="relative">
               {/* Background decorative elements */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">

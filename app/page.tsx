@@ -15,6 +15,7 @@ import Pagination from "@/components/pagination"
 import WatchListTab from "@/components/watch-list-tab"
 import MyTokensTab from "@/components/my-tokens-tab"
 import AllTallyClankTab from "@/components/all-tally-clank-tab"
+import WorldChatTab from "@/components/world-chat-tab"
 import BackgroundSync from "@/components/background-sync"
 import { SidebarProvider, useSidebar } from "@/components/sidebar-context"
 
@@ -338,6 +339,10 @@ function TokenDashboardContent() {
           onWishlistToggle={handleWishlistToggle}
         />
       )
+    }
+
+    if (currentTab === "worldchat") {
+      return <WorldChatTab />
     }
 
     return (

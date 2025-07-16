@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     // Get pagination parameters from the URL
     const { searchParams } = new URL(request.url)
     const page = Number.parseInt(searchParams.get("page") || "1", 10)
-    const limit = Number.parseInt(searchParams.get("limit") || "12", 10)
+    const limit = Math.min(Number.parseInt(searchParams.get("limit") || "12", 10), 20)
     const forceRefresh = searchParams.get("forceRefresh") === "true"
     const tab = searchParams.get("tab") || "all"
 
@@ -29,18 +29,66 @@ export async function GET(request: Request) {
 
     // Add pagination parameters to the API call
     // Add a timestamp to bust any caching
-    const response = await fetch(`https://www.clanker.world/api/tokens?offset=${offset}&limit=${limit}&_t=${now}`, {
+    const clankerApiUrl = `https://www.clanker.world/api/tokens?page=${page}&limit=${limit}&_t=${now}`
+    
+    console.log(`Fetching tokens from Clanker API: ${clankerApiUrl}`)
+
+    const response = await fetch(clankerApiUrl, {
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": "tally-clank-nlv03n8n20fn09n9c2n081",
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
       },
       next: { revalidate: 0 }, // Disable cache to ensure fresh data
+      // Add timeout to prevent hanging requests
+      signal: AbortSignal.timeout(15000), // 15 second timeout
     })
 
     if (!response.ok) {
-      throw new Error(`API responded with status: ${response.status}`)
+      const errorDetails = {
+        status: response.status,
+        statusText: response.statusText,
+        url: clankerApiUrl,
+        timestamp: new Date().toISOString()
+      }
+      
+      console.error(`Clanker API error:`, errorDetails)
+      
+      // Try to get more error details from the response
+      try {
+        const errorText = await response.text()
+        if (errorText) {
+          console.error(`Clanker API error response:`, errorText.substring(0, 500))
+        }
+      } catch (textError) {
+        console.error(`Could not read error response:`, textError)
+      }
+
+      // Return a more informative error response
+      return NextResponse.json(
+        { 
+          error: `Clanker API unavailable (${response.status})`,
+          details: response.statusText,
+          retryAfter: response.headers.get('Retry-After') || '30',
+          timestamp: new Date().toISOString(),
+          // Return empty data structure for graceful degradation
+          tokens: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+          }
+        }, 
+        { 
+          status: response.status,
+          headers: {
+            'Retry-After': '30' // Suggest retry after 30 seconds
+          }
+        }
+      )
     }
 
     const rawData = await response.json()
@@ -50,123 +98,106 @@ export async function GET(request: Request) {
 
     // Determine the structure of the data and extract the tokens array
     let tokensArray = []
-    let totalCount = 100 // Default total count if not provided by API
+    let totalCount = 0 // Default total count if not provided by API
 
     // Case 1: If rawData is already an array
     if (Array.isArray(rawData)) {
       tokensArray = rawData
+      totalCount = rawData.length
     }
     // Case 2: If rawData is an object with a data/items/tokens property
     else if (rawData && typeof rawData === "object") {
-      if (Array.isArray(rawData.data)) tokensArray = rawData.data
-      else if (Array.isArray(rawData.items)) tokensArray = rawData.items
-      else if (Array.isArray(rawData.tokens)) tokensArray = rawData.tokens
-      // If we can't find a known array property, return the raw data
-      else tokensArray = [rawData]
-
-      // Try to extract total count for pagination
-      totalCount = rawData.total || rawData.totalCount || rawData.count || 100
+      // Check for various possible structures
+      if (rawData.data && Array.isArray(rawData.data)) {
+        tokensArray = rawData.data
+        totalCount = rawData.total || rawData.count || 50000 // Use API total or fallback
+      } else if (rawData.items && Array.isArray(rawData.items)) {
+        tokensArray = rawData.items
+        totalCount = rawData.total || rawData.count || 50000
+      } else if (rawData.tokens && Array.isArray(rawData.tokens)) {
+        tokensArray = rawData.tokens
+        totalCount = rawData.total || rawData.count || 50000
+      } else if (rawData.results && Array.isArray(rawData.results)) {
+        tokensArray = rawData.results
+        totalCount = rawData.total || rawData.count || 50000
+      }
     }
 
-    // Log the first token to see its structure
-    if (tokensArray.length > 0) {
-      console.log("First token structure:", JSON.stringify(tokensArray[0]))
-    }
-
-    // Process tokens to fetch Warpcast data
+    // Process the tokens array to add additional data
     const processedTokens = await Promise.all(
       tokensArray.map(async (token: any) => {
-        //  Extract creation time from various possible fields
-        const createdAt = token.createdAt || token.created_at || token.creation_time || token.timestamp || now
+        // Convert various ID formats to a consistent string
+        const tokenId = token.id || token._id || token.tokenId || String(Math.random())
 
-        // Check all possible property names for contract address
-        const contractAddress =
-          token.contractAddress ||
-          token.contract_address ||
-          token.contract ||
-          token.address ||
-          token.token_address ||
-          token.tokenAddress ||
-          "0x0000000000000000000000000000000000000000"
-
-        // Check for image URL in various possible properties
-        let imageUrl = token.imageUrl || token.image || token.logo || token.icon || token.img || ""
-        let img_url = token.img_url || ""
-
-        // If the image URL is relative, make it absolute
-        if (imageUrl && imageUrl.startsWith("/")) {
-          imageUrl = `https://www.clanker.world${imageUrl}`
-        }
-        if (img_url && img_url.startsWith("/")) {
-          img_url = `https://www.clanker.world${img_url}`
-        }
-
-        // Get requestor_fid if available
-        const requestor_fid = token.requestor_fid || token.fid || ""
-
-        // Initialize Warpcast data
-        let warpcastData = {
-          warpcast_username: "",
-          warpcast_display_name: "",
-          warpcast_profile: "",
-          warpcast_pfp_url: "",
-          warpcast_follower_count: 0,
-          warpcast_following_count: 0,
+        // Handle different property names across APIs
+        const processedToken = {
+          id: tokenId,
+          name: token.name || token.tokenName || "",
+          symbol: token.symbol || token.ticker || "",
+          price: token.price || token.current_price || 0,
+          marketCap: token.market_cap || token.marketCap || token.starting_market_cap || 0,
+          volume: token.volume || token.volume_24h || 0,
+          change24h: token.change_24h || token.price_change_24h || 0,
+          imageUrl: token.img_url || token.image_url || token.logo || "",
+          img_url: token.img_url || token.image_url || token.logo || "",
+          cast_hash: token.cast_hash || "",
+          contractAddress: token.contract_address || token.address || "",
+          blockchain: token.blockchain || token.chain || (token.chain_id === 8453 ? "Base" : "Ethereum"),
+          totalSupply: token.total_supply || token.totalSupply || 0,
+          circulatingSupply: token.circulating_supply || token.circulatingSupply || 0,
+          description: token.description || "",
+          website: token.website || "",
+          explorer: token.explorer || "",
+          createdAt: token.created_at || token.createdAt || token.timestamp || Date.now(),
+          requestor_fid: token.requestor_fid || null,
         }
 
-        // Fetch Warpcast data if requestor_fid is available
-        if (requestor_fid) {
+        // Only fetch Warpcast data if we have a requestor_fid
+        let warpcastData = {}
+        if (token.requestor_fid) {
+          const requestor_fid = token.requestor_fid
+
           // Check cache first
           if (warpcastCache.has(requestor_fid)) {
             warpcastData = warpcastCache.get(requestor_fid)
           } else {
+            // Fetch from Warpcast API
             try {
-              // Add a small delay to avoid rate limiting
-              await new Promise((resolve) => setTimeout(resolve, 100))
-
-              const warpcastResponse = await fetch(
-                `https://api.neynar.com/v2/farcaster/user/bulk?fids=${requestor_fid}`,
-                {
-                  method: "GET",
-                  headers: {
-                    accept: "application/json",
-                    "x-neynar-experimental": "false",
-                    "x-api-key": "1BE3BF6D-C349-4D39-A542-5F25B81F0701",
-                  },
-                  next: { revalidate: 3600 }, // Cache for 1 hour
+              const warpcastResponse = await fetch(`https://api.warpcast.com/v2/user?fid=${requestor_fid}`, {
+                headers: {
+                  "Content-Type": "application/json",
                 },
-              )
+              })
 
-              if (!warpcastResponse.ok) {
-                console.log(`Warpcast API error: ${warpcastResponse.status} ${warpcastResponse.statusText}`)
-                // Don't try to parse JSON if the response is not OK
-                throw new Error(`Warpcast API responded with status: ${warpcastResponse.status}`)
-              }
+              if (warpcastResponse.ok) {
+                const responseText = await warpcastResponse.text()
+                let warpcastResponseData: any = {}
 
-              const responseText = await warpcastResponse.text()
-              let warpcastResponseData
+                try {
+                  warpcastResponseData = JSON.parse(responseText)
+                  console.log("Warpcast API response:", JSON.stringify(warpcastResponseData).substring(0, 500) + "...")
 
-              try {
-                warpcastResponseData = JSON.parse(responseText)
-                console.log("Warpcast API response:", JSON.stringify(warpcastResponseData).substring(0, 500) + "...")
+                  if (warpcastResponseData.users && warpcastResponseData.users.length > 0) {
+                    const user = warpcastResponseData.users[0]
+                    warpcastData = {
+                      warpcast_username: user.username || "",
+                      warpcast_display_name: user.display_name || "",
+                      warpcast_profile: user.profile?.bio?.text || "",
+                      warpcast_pfp_url: user.pfp?.url || "",
+                      warpcast_follower_count: user.follower_count || 0,
+                      warpcast_following_count: user.following_count || 0,
+                    }
 
-                if (warpcastResponseData.users && warpcastResponseData.users.length > 0) {
-                  const user = warpcastResponseData.users[0]
-                  warpcastData = {
-                    warpcast_username: user.username || "",
-                    warpcast_display_name: user.display_name || "",
-                    warpcast_profile: user.profile?.bio?.text || "",
-                    warpcast_pfp_url: user.pfp?.url || "",
-                    warpcast_follower_count: user.follower_count || 0,
-                    warpcast_following_count: user.following_count || 0,
+                    // Cache the result
+                    warpcastCache.set(requestor_fid, warpcastData)
                   }
-
-                  // Cache the result
-                  warpcastCache.set(requestor_fid, warpcastData)
+                } catch (parseError) {
+                  console.error("Error parsing Warpcast API response:", parseError)
+                  console.log("Raw response:", responseText.substring(0, 200))
+                  // Continue with default empty warpcastData
                 }
-              } catch (parseError) {
-                console.error("Error parsing Warpcast API response:", parseError)
-                console.log("Raw response:", responseText.substring(0, 200))
+              } else {
+                console.error("Error fetching Warpcast data:", warpcastResponse.status)
                 // Continue with default empty warpcastData
               }
             } catch (error) {
@@ -177,32 +208,13 @@ export async function GET(request: Request) {
         }
 
         return {
-          id: token.id || token._id || String(Math.random()),
-          name: token.name || token.tokenName || "Unknown Token",
-          symbol: token.symbol || token.tokenSymbol || "???",
-          price: typeof token.price === "number" ? token.price : token.currentPrice || token.tokenPrice || 0,
-          marketCap:
-            typeof token.marketCap === "number" ? token.marketCap : token.market_cap || token.marketCapitalization || 0,
-          volume: typeof token.volume === "number" ? token.volume : token.volume24h || token.tradingVolume || 0,
-          change24h: typeof token.change24h === "number" ? token.change24h : token.priceChange24h || token.change || 0,
-          imageUrl,
-          img_url,
-          cast_hash: token.cast_hash || token.deployer || token.creator || "",
-          contractAddress,
-          blockchain: token.blockchain || token.network || token.chain || "Ethereum",
-          totalSupply: token.totalSupply || token.total_supply || 0,
-          circulatingSupply: token.circulatingSupply || token.circulating_supply || 0,
-          description: token.description || token.about || "",
-          website: token.website || token.websiteUrl || token.website_url || "",
-          explorer: token.explorer || token.explorerUrl || token.explorer_url || "",
-          createdAt,
-          requestor_fid,
+          ...processedToken,
           ...warpcastData,
         }
       }),
     )
 
-    // Create the response object
+    // Create the response data
     const responseData = {
       tokens: processedTokens,
       pagination: {
@@ -223,6 +235,43 @@ export async function GET(request: Request) {
     return nextResponse
   } catch (error) {
     console.error("Error fetching token data:", error)
-    return NextResponse.json({ error: "Failed to fetch token data" }, { status: 500 })
+    
+    // Determine if this is a timeout or network error
+    let errorMessage = "Failed to fetch token data"
+    let statusCode = 500
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        errorMessage = "Request timeout - Clanker API is taking too long to respond"
+        statusCode = 504
+      } else if (error.message.includes('fetch')) {
+        errorMessage = "Network error - Unable to connect to Clanker API"
+        statusCode = 503
+      } else {
+        errorMessage = error.message
+      }
+    }
+    
+    return NextResponse.json(
+      { 
+        error: errorMessage,
+        details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+        // Return empty data structure for graceful degradation
+        tokens: [],
+        pagination: {
+          page: 1,
+          limit: 12,
+          total: 0,
+          totalPages: 0,
+        }
+      }, 
+      { 
+        status: statusCode,
+        headers: {
+          'Retry-After': '30'
+        }
+      }
+    )
   }
 }

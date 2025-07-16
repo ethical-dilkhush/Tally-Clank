@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowDown, ArrowUp } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 interface PaginationProps {
   currentPage: number
@@ -12,71 +11,62 @@ interface PaginationProps {
 }
 
 export default function Pagination({ currentPage, totalPages, onPageChange, isLoading }: PaginationProps) {
-  const [isChangingPage, setIsChangingPage] = useState(false)
-
-  useEffect(() => {
-    if (!isLoading && isChangingPage) {
-      setIsChangingPage(false)
-    }
-  }, [isLoading, isChangingPage])
-
-  const handleLoadMore = () => {
-    if (currentPage < totalPages) {
-      setIsChangingPage(true)
-      onPageChange(currentPage + 1)
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      onPageChange(page)
     }
   }
 
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      setIsChangingPage(true)
-      onPageChange(currentPage - 1)
-    }
-  }
-
-  if (currentPage >= totalPages && currentPage === 1) return null
+  if (totalPages <= 1) return null
 
   return (
-    <div className="flex items-center justify-center gap-4 mt-8 mb-4">
-      {currentPage > 1 && (
+    <div className="flex flex-col items-center gap-4 mt-8 mb-4">
+      {/* Main pagination controls */}
+      <div className="flex items-center gap-2 flex-wrap justify-center">
+        {/* First page button */}
         <Button
-          onClick={handlePrevious}
-          disabled={isLoading}
-          className="bg-card/60 backdrop-blur-sm border-card-border hover:bg-card/80 transition-colors px-6 py-2 rounded-full shadow-sm hover:shadow-md"
+          onClick={() => handlePageChange(1)}
+          disabled={isLoading || currentPage === 1}
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex"
         >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <ArrowUp className="h-4 w-4" />
-              <span>Back</span>
-            </div>
-          )}
+          <ChevronsLeft className="h-4 w-4" />
         </Button>
-      )}
 
-      {currentPage < totalPages && (
+        {/* Previous page button */}
         <Button
-          onClick={handleLoadMore}
-          disabled={isLoading}
-          className="bg-card/60 backdrop-blur-sm border-card-border hover:bg-card/80 transition-colors px-6 py-2 rounded-full shadow-sm hover:shadow-md"
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={isLoading || currentPage === 1}
+          variant="outline"
+          size="sm"
         >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading more...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <ArrowDown className="h-4 w-4" />
-              <span className="text-white">Load More</span>
-            </div>
-          )}
+          <ChevronLeft className="h-4 w-4" />
+          <span className="hidden sm:inline ml-1">Previous</span>
         </Button>
-      )}
+
+        {/* Next page button */}
+        <Button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={isLoading || currentPage === totalPages}
+          variant="outline"
+          size="sm"
+        >
+          <span className="hidden sm:inline mr-1">Next</span>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
+        {/* Last page button */}
+        <Button
+          onClick={() => handlePageChange(totalPages)}
+          disabled={isLoading || currentPage === totalPages}
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex"
+        >
+          <ChevronsRight className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }

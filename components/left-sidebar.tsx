@@ -12,7 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Coins,
-  Building
+  Building,
+  MessageSquare
 } from "lucide-react"
 
 interface LeftSidebarProps {
@@ -24,38 +25,37 @@ const navigationItems = [
   {
     id: "all",
     label: "All Tokens",
-    icon: BarChart3,
-    description: "View all available tokens"
+    icon: BarChart3
   },
   {
     id: "trending", 
     label: "Trending",
-    icon: Sparkles,
-    description: "Popular tokens today"
+    icon: Sparkles
   },
   {
     id: "watchlist",
     label: "Watch List", 
-    icon: BookmarkCheck,
-    description: "Your saved tokens"
+    icon: BookmarkCheck
   },
   {
     id: "mytokens",
     label: "My Tokens",
-    icon: Coins,
-    description: "Tokens created via Tally Clank"
+    icon: Coins
   },
   {
     id: "tallyclank",
     label: "All Tally Clank",
-    icon: Building,
-    description: "All official Tally Clank tokens"
+    icon: Building
   },
   {
     id: "autobuy",
     label: "Auto Buy",
-    icon: Zap, 
-    description: "Automated trading"
+    icon: Zap
+  },
+  {
+    id: "worldchat",
+    label: "World Chat",
+    icon: MessageSquare
   }
 ]
 
@@ -75,24 +75,24 @@ export default function LeftSidebar({ onTabChange, activeTab = "all" }: LeftSide
         isCollapsed ? "w-16" : "w-64"
       )}
     >
-      {/* Collapse/Expand Button - Only show on desktop */}
-      <div className="flex justify-end p-2 border-b border-card-border">
+      {/* Collapse/Expand Button */}
+      <div className="flex justify-end p-3 border-b border-card-border/50">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 hover:bg-primary/10 transition-colors"
         >
           {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           )}
         </Button>
       </div>
 
       {/* Navigation Items */}
-      <nav className="p-2 space-y-1">
+      <nav className="p-3 space-y-2">
         {navigationItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id
@@ -100,36 +100,32 @@ export default function LeftSidebar({ onTabChange, activeTab = "all" }: LeftSide
           return (
             <Button
               key={item.id}
-              variant={isActive ? "secondary" : "ghost"}
+              variant="ghost"
               className={cn(
-                "w-full justify-start gap-3 h-12 transition-all duration-200",
+                "w-full justify-start gap-3 h-11 transition-all duration-200 hover:bg-primary/5",
                 isCollapsed ? "px-2" : "px-3",
-                isActive && "bg-primary/10 border border-primary/20"
+                isActive && "bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15"
               )}
               onClick={() => handleTabChange(item.id)}
             >
-              <Icon className={cn("h-5 w-5 flex-shrink-0", isActive && "text-primary")} />
+              <Icon className={cn("h-5 w-5 flex-shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
               
               {!isCollapsed && (
-                <div className="flex flex-col items-start text-left min-w-0">
-                  <span className={cn("font-medium text-sm truncate", isActive && "text-primary")}>
-                    {item.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {item.description}
-                  </span>
-                </div>
+                <span className={cn("font-medium text-sm truncate", isActive ? "text-primary" : "text-foreground")}>
+                  {item.label}
+                </span>
               )}
             </Button>
           )
         })}
       </nav>
 
-      {/* Additional Information Section */}
+      {/* Brand section - only show when expanded */}
       {!isCollapsed && (
-        <div className="absolute bottom-4 left-2 right-2 p-3 bg-muted/30 rounded-lg border border-card-border">
-          <div className="text-xs text-center text-muted-foreground">
-            <p className="font-medium">Tally Clank</p>
+        <div className="absolute bottom-4 left-3 right-3 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+          <div className="text-center">
+            <p className="text-sm font-semibold text-primary">Tally Clank</p>
+            <p className="text-xs text-muted-foreground mt-1">Token Dashboard</p>
           </div>
         </div>
       )}
