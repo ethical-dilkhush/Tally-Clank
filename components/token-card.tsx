@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { ArrowDownIcon, ArrowUpIcon, BarChart3, Send, Clock, Star } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon, Send, Clock, Star } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
@@ -26,15 +26,8 @@ interface Token {
   website?: string
   explorer?: string
   requestor_fid?: string
-  warpcast_username?: string
-  warpcast_display_name?: string
-  warpcast_profile?: string
-  warpcast_pfp_url?: string
-  warpcast_follower_count?: number
-  warpcast_following_count?: number
   createdAt?: string | number // Add createdAt field
   rawCreatedAt?: any // Add raw value for debugging
-  dexScreenerData?: any // Add field for DexScreener data
 }
 
 interface TokenCardProps {
@@ -47,8 +40,6 @@ interface TokenCardProps {
 export default function TokenCard({ token, onClick, isWishlisted, onWishlistToggle }: TokenCardProps) {
   const [imageError, setImageError] = useState(false)
   const [isNew, setIsNew] = useState(true)
-  const [dexData, setDexData] = useState<any>(null)
-  const [loadingDexData, setLoadingDexData] = useState(false)
 
   // Effect to handle the "new" state for animation
   useEffect(() => {
@@ -59,75 +50,6 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
 
     return () => clearTimeout(timer)
   }, [token.id, token.price]) // Re-trigger when token ID or price changes
-
-  // Fetch DexScreener data if we have a contract address
-  useEffect(() => {
-    if (token.contractAddress && token.contractAddress !== "0x0000000000000000000000000000000000000000") {
-      fetchDexScreenerData(token.contractAddress, token.blockchain || "ethereum")
-    }
-  }, [token.contractAddress, token.blockchain])
-
-  // Update the fetchDexScreenerData function to better handle errors
-  const fetchDexScreenerData = async (address: string, chain: string) => {
-    try {
-      setLoadingDexData(true)
-
-      // Map blockchain name to DexScreener chainId
-      const chainId = mapBlockchainToDexScreenerChainId(chain)
-
-      const response = await fetch(`/api/dexscreener?chainId=${chainId}&tokenAddress=${address}&_t=${Date.now()}`)
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      if (data.error) {
-        console.warn("DexScreener API returned an error:", data.error)
-        // Don't throw here, just set null data
-        setDexData(null)
-        return
-      }
-
-      // Validate the data structure before using it
-      if (data && typeof data === "object") {
-        setDexData(data)
-      } else {
-        console.warn("Unexpected data format from DexScreener API:", data)
-        setDexData(null)
-      }
-    } catch (err) {
-      console.error("Error fetching DexScreener data:", err)
-      setDexData(null)
-    } finally {
-      setLoadingDexData(false)
-    }
-  }
-
-  // Map blockchain name to DexScreener chainId
-  const mapBlockchainToDexScreenerChainId = (blockchain: string): string => {
-    const chainMap: Record<string, string> = {
-      ethereum: "ethereum",
-      eth: "ethereum",
-      bsc: "bsc",
-      binance: "bsc",
-      polygon: "polygon",
-      matic: "polygon",
-      avalanche: "avalanche",
-      avax: "avalanche",
-      fantom: "fantom",
-      ftm: "fantom",
-      arbitrum: "arbitrum",
-      optimism: "optimism",
-      base: "base",
-      solana: "solana",
-      sol: "solana",
-    }
-
-    const normalizedChain = blockchain.toLowerCase()
-    return chainMap[normalizedChain] || normalizedChain
-  }
 
   // Update the formatCurrency function to handle very small numbers better with 8 decimal places
   const formatCurrency = (value: number) => {
@@ -153,15 +75,6 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
       return `$${(value / 1_000).toFixed(2)}K`
     }
     return `$${value.toFixed(2)}`
-  }
-
-  const formatCount = (count: number) => {
-    if (count >= 1_000_000) {
-      return `${(count / 1_000_000).toFixed(1)}M`
-    } else if (count >= 1_000) {
-      return `${(count / 1_000).toFixed(1)}K`
-    }
-    return count.toString()
   }
 
   // Format creation time
@@ -238,30 +151,9 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
     img_url = "",
     contractAddress = "0x0000000000000000000000000000000000000000",
     blockchain = "Ethereum",
-    warpcast_username = "",
     createdAt,
     rawCreatedAt,
   } = token
-
-  // Update the price and other data display to be more defensive
-  // Use DexScreener data if available and valid
-  const displayPrice =
-    dexData?.mainPair?.price !== undefined && !isNaN(dexData.mainPair.price) ? dexData.mainPair.price : price
-
-  const displayMarketCap =
-    dexData?.mainPair?.marketCap !== undefined && !isNaN(dexData.mainPair.marketCap)
-      ? dexData.mainPair.marketCap
-      : marketCap
-
-  const displayVolume =
-    dexData?.mainPair?.volume24h !== undefined && !isNaN(dexData.mainPair.volume24h)
-      ? dexData.mainPair.volume24h
-      : volume
-
-  const displayChange24h =
-    dexData?.mainPair?.priceChange24h !== undefined && !isNaN(dexData.mainPair.priceChange24h)
-      ? dexData.mainPair.priceChange24h
-      : change24h
 
   // Format the symbol with $ if it doesn't already have one
   const formattedSymbol = symbol.startsWith("$") ? symbol : `${symbol}`
@@ -270,10 +162,10 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
   const displayImageUrl = img_url || imageUrl
 
   // Ensure numeric values are actually numbers
-  const safePrice = typeof displayPrice === "number" ? displayPrice : 0
-  const safeMarketCap = typeof displayMarketCap === "number" ? displayMarketCap : 0
-  const safeVolume = typeof displayVolume === "number" ? displayVolume : 0
-  const safeChange24h = typeof displayChange24h === "number" ? displayChange24h : 0
+  const safePrice = typeof price === "number" ? price : 0
+  const safeMarketCap = typeof marketCap === "number" ? marketCap : 0
+  const safeVolume = typeof volume === "number" ? volume : 0
+  const safeChange24h = typeof change24h === "number" ? change24h : 0
 
   const isPositiveChange = safeChange24h >= 0
 
@@ -302,19 +194,6 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
         {cleanSymbol.substring(0, 2).toUpperCase()}
       </div>
     )
-  }
-
-  const openDexScreener = (address: string) => {
-    // Use DexScreener URL from API if available
-    if (dexData?.mainPair?.url) {
-      window.open(dexData.mainPair.url, "_blank")
-      return
-    }
-
-    // Otherwise construct URL based on blockchain
-    const chainId = mapBlockchainToDexScreenerChainId(blockchain)
-    const dexScreenerUrl = `https://dexscreener.com/${chainId}/${address}`
-    window.open(dexScreenerUrl, "_blank")
   }
 
   const sendToTelegram = () => {
@@ -351,20 +230,8 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
     }
   }
 
-  const openWarpcast = (e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent token card click
-    if (warpcast_username) {
-      window.open(`https://warpcast.com/${warpcast_username}`, "_blank")
-    }
-  }
-
-  // Create a merged token object with DexScreener data
   const handleClick = () => {
-    const enrichedToken = {
-      ...token,
-      dexScreenerData: dexData,
-    }
-    onClick(enrichedToken)
+    onClick(token)
   }
 
   return (
@@ -400,10 +267,7 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
                   src={displayImageUrl || "/placeholder.svg"}
                   alt={`${name} logo`}
                   className="h-full w-full object-cover"
-                  onError={() => {
-                    console.log(`Image failed to load: ${displayImageUrl}`)
-                    setImageError(true)
-                  }}
+                  onError={() => setImageError(true)}
                 />
               ) : (
                 generatePlaceholderImage()
@@ -418,37 +282,6 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
               </div>
             </div>
           </div>
-
-          {warpcast_username && (
-            <div className="flex items-center gap-3 mt-2">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-kOwltd4rhMW0svy9IIsyJnsr8fonsE.png"
-                alt="Warpcast"
-                className="h-6 w-6"
-              />
-              <div className="flex items-center gap-4">
-                <a
-                  href={`https://warpcast.com/${warpcast_username}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-lg text-white hover:underline"
-                >
-                  @{warpcast_username}
-                </a>
-                {token.warpcast_follower_count !== undefined && (
-                  <span className="text-sm text-muted-foreground">
-                    <strong>{formatCount(token.warpcast_follower_count || 0)}</strong> followers
-                  </span>
-                )}
-                {token.warpcast_following_count !== undefined && (
-                  <span className="text-sm text-muted-foreground">
-                    <strong>{formatCount(token.warpcast_following_count || 0)}</strong> following
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </CardHeader>
 
@@ -482,16 +315,6 @@ export default function TokenCard({ token, onClick, isWishlisted, onWishlistTogg
 
           {/* Action Buttons */}
           <div className="flex gap-2 pt-3">
-            <Button
-              size="default"
-              className="flex-1 bg-gradient-to-r from-[#ff007a] to-[#d15aa9] hover:opacity-90 text-white text-base"
-              onClick={(e) => {
-                e.stopPropagation()
-                openDexScreener(contractAddress)
-              }}
-            >
-              <BarChart3 className="h-5 w-5 mr-2" /> DEX
-            </Button>
             <Button
               size="default"
               className="flex-1 bg-[#0088cc] hover:bg-[#0077b5] text-white text-base"

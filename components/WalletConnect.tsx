@@ -45,11 +45,10 @@ export function WalletConnect() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { address, isConnected, chain } = useAccount();
+  const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
-  // TALLY token balance check
   const { data: decimals } = useReadContract({
     address: TALLY_CONTRACT_ADDRESS,
     abi: ERC20_ABI,
@@ -71,19 +70,16 @@ export function WalletConnect() {
     return balanceInTokens >= REQUIRED_TALLY_BALANCE;
   };
 
-  // Ensure component is mounted to prevent hydration mismatch
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -91,10 +87,8 @@ export function WalletConnect() {
   const handleConnect = async () => {
     try {
       setIsConnecting(true);
-      // Try to use injected (MetaMask, etc.) first
       const injectedConnector = connectors.find(connector => connector.type === 'injected');
       const connector = injectedConnector || connectors[0];
-      
       if (connector) {
         await connect({ connector });
       }
@@ -122,7 +116,6 @@ export function WalletConnect() {
     setIsDropdownOpen(false);
   };
 
-  // Show loading state until mounted to prevent hydration mismatch
   if (!isMounted) {
     return (
       <Button
@@ -205,4 +198,4 @@ export function WalletConnect() {
       )}
     </div>
   );
-} 
+}

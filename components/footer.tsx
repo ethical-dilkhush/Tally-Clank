@@ -20,7 +20,7 @@ export default function Footer() {
 
   return (
     <footer className="mt-auto border-t border-card-border bg-card/80 backdrop-blur-md py-6">
-      <div className="container mx-auto px-4">
+      <div className="w-full max-w-none px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo and Name */}
           <div className="flex items-center gap-2">
@@ -103,23 +103,6 @@ export default function Footer() {
                 <path d="m22 2-7 20-4-9-9-4Z" />
                 <path d="M22 2 11 13" />
               </svg>
-            </a>
-            <a
-              href="https://warpcast.com/tally-clank"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
-              aria-label="Warpcast"
-            >
-              <div className="relative w-5 h-5">
-                <Image
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-KWuB6Z9XKqomMAozjRYccBvOZcQTSZ.png"
-                  alt="Warpcast"
-                  width={20}
-                  height={20}
-                  className="object-contain"
-                />
-              </div>
             </a>
           </div>
         </div>

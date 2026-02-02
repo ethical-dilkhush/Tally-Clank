@@ -3,7 +3,7 @@ import DebugDashboard from '@/components/debug-dashboard'
 
 export default function DatabasePage() {
   return (
-    <div className="container mx-auto py-8 px-4 space-y-8">
+    <div className="w-full max-w-none px-4 py-8 space-y-8">
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold">Database Management</h1>
         <p className="text-muted-foreground">

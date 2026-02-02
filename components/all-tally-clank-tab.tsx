@@ -1,38 +1,13 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import TokenCard from "@/components/token-card"
+import TokenTable, { type TokenTableToken } from "@/components/token-table"
 import { Button } from "@/components/ui/button"
 import { Loader2, Building, RefreshCw, AlertCircle } from "lucide-react"
 
-interface Token {
-  id: string
-  name: string
-  symbol: string
-  price: number
-  marketCap: number
-  volume: number
-  change24h: number
-  imageUrl: string
-  img_url?: string
-  cast_hash?: string
-  contractAddress?: string
-  contract_address?: string
-  blockchain?: string
-  totalSupply?: number
-  circulatingSupply?: number
-  description?: string
-  website?: string
-  explorer?: string
-  createdAt?: string | number
-  deployed_at?: string
-  starting_market_cap?: number
-}
-
 interface AllTallyClankTabProps {
-  onTokenClick: (token: Token) => void
-  wishlistedTokens: Token[]
-  onWishlistToggle: (token: Token) => void
+  wishlistedTokens: TokenTableToken[]
+  onWishlistToggle: (token: TokenTableToken) => void
 }
 
 interface PaginationData {
@@ -42,8 +17,8 @@ interface PaginationData {
   hasMore: boolean
 }
 
-export default function AllTallyClankTab({ onTokenClick, wishlistedTokens, onWishlistToggle }: AllTallyClankTabProps) {
-  const [tokens, setTokens] = useState<Token[]>([])
+export default function AllTallyClankTab({ wishlistedTokens, onWishlistToggle }: AllTallyClankTabProps) {
+  const [tokens, setTokens] = useState<TokenTableToken[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -171,18 +146,12 @@ export default function AllTallyClankTab({ onTokenClick, wishlistedTokens, onWis
         </Button>
       </div>
 
-      {/* Token Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tokens.map((token) => (
-          <TokenCard
-            key={token.id}
-            token={token}
-            onClick={onTokenClick}
-            isWishlisted={wishlistedTokens.some(w => w.id === token.id)}
-            onWishlistToggle={onWishlistToggle}
-          />
-        ))}
-      </div>
+      {/* Token Table */}
+      <TokenTable
+        tokens={tokens}
+        wishlistedTokens={wishlistedTokens}
+        onWishlistToggle={onWishlistToggle}
+      />
 
       {/* Load More Button */}
       {pagination.hasMore && (

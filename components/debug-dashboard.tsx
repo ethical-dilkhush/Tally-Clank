@@ -73,7 +73,7 @@ export default function DebugDashboard() {
   }
 
   return (
-    <Card className="w-full max-w-6xl mx-auto">
+    <Card className="w-full max-w-none px-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bug className="h-5 w-5" />

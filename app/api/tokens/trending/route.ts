@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
 // Simple cache to avoid repeated API calls
-const warpcastCache = new Map()
 const tokenCache = new Map()
 let lastFetchTime = 0
 const CACHE_TTL = 1000 // 1 second cache TTL
@@ -22,7 +21,6 @@ export async function GET(request: Request) {
     const now = Date.now()
 
     if (!forceRefresh && tokenCache.has(cacheKey) && now - lastFetchTime < CACHE_TTL) {
-      console.log("Returning cached trending token data")
       return tokenCache.get(cacheKey)
     }
 
@@ -49,9 +47,6 @@ export async function GET(request: Request) {
 
     const rawData = await response.json()
 
-    // Log the raw data to see what we're getting
-    console.log("Raw trending API response:", JSON.stringify(rawData).substring(0, 500) + "...")
-
     // Determine the structure of the data and extract the tokens array
     let tokensArray = []
     let totalCount = 0 // Default total count if not provided by API
@@ -73,12 +68,6 @@ export async function GET(request: Request) {
       totalCount = rawData.total || rawData.totalCount || rawData.count || 50000
     }
 
-    // Log the first token to see its structure
-    if (tokensArray.length > 0) {
-      console.log("First trending token structure:", JSON.stringify(tokensArray[0]))
-    }
-
-    // Process tokens to fetch Warpcast data
     const processedTokens = await Promise.all(
       tokensArray.map(async (token: any) => {
         // Find the section where we extract and process the creation time
@@ -160,80 +149,7 @@ export async function GET(request: Request) {
           img_url = `https://www.clanker.world${img_url}`
         }
 
-        // Get requestor_fid if available
         const requestor_fid = token.requestor_fid || token.fid || ""
-
-        // Initialize Warpcast data
-        let warpcastData = {
-          warpcast_username: "",
-          warpcast_display_name: "",
-          warpcast_profile: "",
-          warpcast_pfp_url: "",
-          warpcast_follower_count: 0,
-          warpcast_following_count: 0,
-        }
-
-        // Fetch Warpcast data if requestor_fid is available
-        if (requestor_fid) {
-          // Check cache first
-          if (warpcastCache.has(requestor_fid)) {
-            warpcastData = warpcastCache.get(requestor_fid)
-          } else {
-            try {
-              // Add a small delay to avoid rate limiting
-              await new Promise((resolve) => setTimeout(resolve, 100))
-
-              const warpcastResponse = await fetch(
-                `https://api.neynar.com/v2/farcaster/user/bulk?fids=${requestor_fid}`,
-                {
-                  method: "GET",
-                  headers: {
-                    accept: "application/json",
-                    "x-neynar-experimental": "false",
-                    "x-api-key": "1BE3BF6D-C349-4D39-A542-5F25B81F0701",
-                  },
-                  next: { revalidate: 3600 }, // Cache for 1 hour
-                },
-              )
-
-              if (!warpcastResponse.ok) {
-                console.log(`Warpcast API error: ${warpcastResponse.status} ${warpcastResponse.statusText}`)
-                // Don't try to parse JSON if the response is not OK
-                throw new Error(`Warpcast API responded with status: ${warpcastResponse.status}`)
-              }
-
-              const responseText = await warpcastResponse.text()
-              let warpcastResponseData
-
-              try {
-                warpcastResponseData = JSON.parse(responseText)
-                console.log("Warpcast API response:", JSON.stringify(warpcastResponseData).substring(0, 500) + "...")
-
-                if (warpcastResponseData.users && warpcastResponseData.users.length > 0) {
-                  const user = warpcastResponseData.users[0]
-                  warpcastData = {
-                    warpcast_username: user.username || "",
-                    warpcast_display_name: user.display_name || "",
-                    warpcast_profile: user.profile?.bio?.text || "",
-                    warpcast_pfp_url: user.pfp?.url || "",
-                    warpcast_follower_count: user.follower_count || 0,
-                    warpcast_following_count: user.following_count || 0,
-                  }
-
-                  // Cache the result
-                  warpcastCache.set(requestor_fid, warpcastData)
-                }
-              } catch (parseError) {
-                console.error("Error parsing Warpcast API response:", parseError)
-                console.log("Raw response:", responseText.substring(0, 200))
-                // Continue with default empty warpcastData
-              }
-            } catch (error) {
-              console.error("Error fetching Warpcast data:", error)
-              // Continue with default empty warpcastData
-            }
-          }
-        }
 
         return {
           id: token.id || token._id || String(Math.random()),
@@ -256,7 +172,6 @@ export async function GET(request: Request) {
           explorer: token.explorer || token.explorerUrl || token.explorer_url || "",
           createdAt: normalizedCreatedAt,
           requestor_fid,
-          ...warpcastData,
         }
       }),
     )

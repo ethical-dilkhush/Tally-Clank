@@ -57,7 +57,6 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
   const [deploymentStatus, setDeploymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [deploymentMessage, setDeploymentMessage] = useState('');
 
-  // TALLY token balance check
   const { data: decimals } = useReadContract({
     address: TALLY_CONTRACT_ADDRESS,
     abi: ERC20_ABI,
@@ -181,7 +180,6 @@ export function TokenCreateModal({ isOpen, onClose }: TokenCreateModalProps) {
       return;
     }
 
-    // Check TALLY token balance
     if (!hasEnoughTokens()) {
       setDeploymentStatus('error');
       setDeploymentMessage('You need at least 5,000,000 TALLY tokens to create a token. Please purchase TALLY tokens and try again.');

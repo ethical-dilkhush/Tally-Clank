@@ -10,8 +10,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12');
     const offset = (page - 1) * limit;
 
-    console.log(`📊 Fetching tokens from database (page ${page}, limit ${limit})`);
-
     // Get tokens from database
     const { data: tokens, error } = await supabase
       .from('clanker_tokens')
@@ -71,6 +69,7 @@ export async function GET(request: NextRequest) {
       warnings: token.warnings,
       pool_config: token.pool_config,
       msg_sender: token.msg_sender,
+      tags: token.tags || null,
       factory_address: token.factory_address,
       locker_address: token.locker_address,
       position_id: token.position_id,
@@ -78,8 +77,6 @@ export async function GET(request: NextRequest) {
       inserted_at: token.inserted_at,
       updated_at: token.updated_at
     }));
-
-    console.log(`✅ Retrieved ${transformedTokens.length} tokens from database`);
 
     return NextResponse.json({
       data: transformedTokens,

@@ -4,8 +4,6 @@ import { supabase } from '@/lib/supabase'
 // GET - Fetch chat messages
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔄 Fetching world chat messages...')
-    
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
@@ -23,8 +21,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Test Supabase connection first
-    console.log('🔍 Testing Supabase connection...')
     const { data: connectionTest, error: connectionError } = await supabase
       .from('world_chat')
       .select('count', { count: 'exact', head: true })
@@ -50,10 +46,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('✅ Supabase connection successful')
-
-    // Fetch messages from Supabase
-    console.log('📊 Fetching messages from database...')
     const { data: messages, error, count } = await supabase
       .from('world_chat')
       .select('*', { count: 'exact' })
@@ -68,10 +60,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Reverse the order to show oldest to newest
     const reversedMessages = messages?.reverse() || []
-    
-    console.log(`📊 Retrieved ${reversedMessages.length} messages`)
 
     const response = {
       messages: reversedMessages,
@@ -81,7 +70,6 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     }
 
-    console.log('✅ Sending successful response')
     return NextResponse.json(response)
     
   } catch (error) {
@@ -101,12 +89,8 @@ export async function GET(request: NextRequest) {
 // POST - Send a new message
 export async function POST(request: NextRequest) {
   try {
-    console.log('📤 Sending new world chat message...')
-    
     const body = await request.json()
     const { address, message } = body
-    
-    console.log('📋 Message data:', { address: address?.slice(0, 10) + '...', messageLength: message?.length })
 
     // Validate required fields
     if (!address || !message) {
@@ -135,8 +119,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Test database connection first
-    console.log('🔍 Testing database connection...')
     const { data: connectionTest, error: connectionError } = await supabase
       .from('world_chat')
       .select('count', { count: 'exact', head: true })
@@ -161,13 +143,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ Database connection successful')
-
     // Create display name from wallet address
     const displayName = `${address.slice(0, 6)}...${address.slice(-4)}`
 
-    // Insert message into Supabase
-    console.log('💾 Inserting message into database...')
     const { data, error } = await supabase
       .from('world_chat')
       .insert([
@@ -188,7 +166,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('✅ Message sent successfully:', data.id)
     return NextResponse.json({
       message: 'Message sent successfully',
       data

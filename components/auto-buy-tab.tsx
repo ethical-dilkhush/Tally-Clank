@@ -4,22 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Plus, Trash2, AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import TokenCard from "@/components/token-card"
-
-interface Token {
-  id: string
-  name: string
-  symbol: string
-  price: number
-  marketCap: number
-  volume: number
-  change24h: number
-  imageUrl: string
-  contractAddress?: string
-  blockchain?: string
-  createdAt?: string | number
-  [key: string]: any
-}
+import TokenTable, { type TokenTableToken } from "@/components/token-table"
 
 interface SavedToken {
   name: string
@@ -28,18 +13,17 @@ interface SavedToken {
 }
 
 interface AutoBuyTabProps {
-  tokens: Token[]
-  onTokenClick: (token: Token) => void
+  tokens: TokenTableToken[]
 }
 
-export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: AutoBuyTabProps) {
+export default function AutoBuyTab({ tokens: initialTokens }: AutoBuyTabProps) {
   const [savedTokens, setSavedTokens] = useState<SavedToken[]>([])
   const [tokenName, setTokenName] = useState("")
   const [tokenTicker, setTokenTicker] = useState("")
-  const [detectedTokens, setDetectedTokens] = useState<Token[]>([])
+  const [detectedTokens, setDetectedTokens] = useState<TokenTableToken[]>([])
   const [error, setError] = useState("")
   const [refreshing, setRefreshing] = useState(false)
-  const [allTokens, setAllTokens] = useState<Token[]>(initialTokens || [])
+  const [allTokens, setAllTokens] = useState<TokenTableToken[]>(initialTokens || [])
   const [apiError, setApiError] = useState<string | null>(null)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const errorCountRef = useRef(0)
@@ -153,7 +137,7 @@ export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: Auto
         
         // Still process any tokens that might be in the response (graceful degradation)
         if (data.tokens && Array.isArray(data.tokens) && data.tokens.length > 0) {
-          const timestampedData = data.tokens.map((token: Token) => ({
+          const timestampedData = data.tokens.map((token: TokenTableToken) => ({
             ...token,
             _timestamp: Date.now(),
           }))
@@ -167,7 +151,7 @@ export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: Auto
       // Check if data contains tokens array
       if (data && data.tokens && Array.isArray(data.tokens)) {
         // Add a timestamp to each token
-        const timestampedData = data.tokens.map((token: Token) => ({
+        const timestampedData = data.tokens.map((token: TokenTableToken) => ({
           ...token,
           _timestamp: Date.now(),
         }))
@@ -214,7 +198,7 @@ export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: Auto
       return
     }
 
-    const matches: Token[] = []
+    const matches: TokenTableToken[] = []
 
     // Check each token against our saved list
     allTokens.forEach((token) => {
@@ -278,7 +262,7 @@ export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: Auto
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="w-full max-w-none px-4 space-y-8">
       {/* Header Section */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Auto Buy Tokens</h1>
@@ -484,15 +468,7 @@ export default function AutoBuyTab({ tokens: initialTokens, onTokenClick }: Auto
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {detectedTokens.map((token) => (
-              <div key={token.id} className="relative group">
-                <div className="transform transition-all duration-200 hover:scale-105">
-                  <TokenCard token={token} onClick={onTokenClick} />
-                </div>
-              </div>
-            ))}
-          </div>
+          <TokenTable tokens={detectedTokens} />
         )}
       </div>
     </div>

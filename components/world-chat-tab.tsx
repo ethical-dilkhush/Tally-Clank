@@ -40,110 +40,76 @@ export default function WorldChatTab({}: WorldChatTabProps) {
   const fetchMessages = useCallback(async () => {
     try {
       setError(null)
-      console.log('🔄 Fetching messages from API...')
-      console.log('🔄 API URL:', '/api/world-chat?limit=100')
-      console.log('🔄 Current time:', new Date().toISOString())
-      
+
       const response = await fetch('/api/world-chat?limit=100', {
         headers: {
           'Cache-Control': 'no-cache'
         }
       })
 
-      console.log('📡 API Response status:', response.status, response.statusText)
-      console.log('📡 API Response URL:', response.url)
-      console.log('📡 API Response headers:', {
-        'content-type': response.headers.get('content-type'),
-        'content-length': response.headers.get('content-length'),
-        'cache-control': response.headers.get('cache-control')
-      })
-
       if (!response.ok) {
-        let errorData = null
-        try {
-          const responseText = await response.text()
-          console.log('📄 Raw error response:', responseText)
-          console.log('📄 Response length:', responseText.length)
-          console.log('📄 Response content type:', response.headers.get('content-type'))
-          
-          if (responseText.trim()) {
+        const responseText = await response.text()
+        const contentType = response.headers.get('content-type') || ''
+        const isJson = contentType.includes('application/json') || /^\s*[\{\[]/.test(responseText.trim())
+
+        let errorData: { error?: string; details?: string; setupRequired?: boolean } | null = null
+        if (responseText.trim() && isJson) {
+          try {
             errorData = JSON.parse(responseText)
-            console.log('📄 Parsed error data:', errorData)
-            console.log('📄 Error data type:', typeof errorData)
-            console.log('📄 Error data keys:', Object.keys(errorData || {}))
-          } else {
-            console.log('📄 Empty error response body')
+          } catch {
             errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
           }
-        } catch (parseError) {
-          console.error('❌ Error parsing API response:', parseError)
+        } else {
           errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
         }
-        
-        // Check if errorData is empty object
+
         if (errorData && typeof errorData === 'object' && Object.keys(errorData).length === 0) {
-          console.log('⚠️ Empty error object detected, creating fallback error')
-          errorData = { error: `HTTP ${response.status}: ${response.statusText} (empty error response)` }
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
         }
-        
-        console.error('❌ Final processed error data:', errorData)
-        
-        // Handle specific error cases
-        if (errorData && errorData.setupRequired) {
+
+        if (errorData?.setupRequired) {
           throw new Error(`Database Setup Required: ${errorData.details}`)
         }
-        
         throw new Error(errorData?.details || errorData?.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
-      // Parse successful response
-      let data = null
-      try {
-        const responseText = await response.text()
-        console.log('📄 Raw success response length:', responseText.length)
-        console.log('📄 Success response content type:', response.headers.get('content-type'))
-        console.log('📄 Raw success response preview:', responseText.substring(0, 200) + '...')
-        
-        if (responseText.trim()) {
-          data = JSON.parse(responseText)
-          console.log('📄 Parsed success data:', data)
-          console.log('📄 Success data type:', typeof data)
-          console.log('📄 Success data keys:', Object.keys(data || {}))
-          
-          // Check if it's an empty object
-          if (data && typeof data === 'object' && Object.keys(data).length === 0) {
-            console.log('⚠️ Empty success object detected')
-            throw new Error('API returned empty object')
-          }
-        } else {
-          console.log('📄 Empty success response body')
-          throw new Error('Empty response from API')
-        }
-      } catch (parseError) {
-        console.error('❌ Error parsing success response:', parseError)
-        console.error('❌ Parse error details:', parseError.message)
-        throw new Error('Invalid response format from API')
+      // Parse successful response (only parse if body looks like JSON; server may return HTML on error)
+      const responseText = await response.text()
+      const contentType = response.headers.get('content-type') || ''
+      const looksLikeJson = contentType.includes('application/json') || /^\s*[\{\[]/.test(responseText.trim())
+
+      if (!responseText.trim()) {
+        throw new Error('Empty response from API')
+      }
+      if (!looksLikeJson) {
+        throw new Error('Server returned an error page instead of JSON. The world-chat API may be misconfigured or unavailable.')
       }
 
-      console.log('✅ Successfully parsed API response:', { messageCount: data.messages?.length || 0 })
-      
-      setMessages(data.messages || [])
+      let data: { messages?: unknown[] } | null = null
+      try {
+        data = JSON.parse(responseText)
+      } catch {
+        throw new Error('Invalid response format from API')
+      }
+      if (data && typeof data === 'object' && Object.keys(data).length === 0) {
+        throw new Error('API returned empty object')
+      }
+
+      const messagesList = data?.messages || []
+      setMessages(messagesList)
       
       // Update online users based on recent activity (last 5 minutes)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
       const recentUsers = new Set(
-        data.messages
+        messagesList
           .filter((msg: ChatMessage) => new Date(msg.created_at) > fiveMinutesAgo)
           .map((msg: ChatMessage) => msg.address)
       )
       setOnlineUsers(recentUsers)
       
     } catch (error) {
-      console.error('❌ Error fetching messages:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to load messages'
       setError(errorMessage)
-    } finally {
-      // setIsLoading(false) // Removed loading state
     }
   }, [])
 
@@ -166,8 +132,6 @@ export default function WorldChatTab({}: WorldChatTabProps) {
     if (!newMessage.trim() || !address || !isConnected) return
 
     try {
-      console.log('📤 Sending message:', { address: address.slice(0, 10) + '...', messageLength: newMessage.trim().length })
-      
       const response = await fetch('/api/world-chat', {
         method: 'POST',
         headers: {
@@ -191,9 +155,7 @@ export default function WorldChatTab({}: WorldChatTabProps) {
         throw new Error(errorData.details || errorData.error || 'Failed to send message')
       }
 
-      const result = await response.json()
-      console.log('✅ Message sent successfully:', result)
-      
+      await response.json()
       setNewMessage("")
       setError(null) // Clear any previous errors
       
@@ -250,7 +212,7 @@ export default function WorldChatTab({}: WorldChatTabProps) {
   }, {} as Record<string, ChatMessage[]>)
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="w-full max-w-none px-4 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

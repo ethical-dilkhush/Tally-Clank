@@ -72,7 +72,7 @@ CREATE TRIGGER update_clanker_tokens_updated_at
 
 -- Add some comments for documentation
 COMMENT ON TABLE clanker_tokens IS 'Stores token data from Clanker API for requestor_fid = 1049503';
-COMMENT ON COLUMN clanker_tokens.requestor_fid IS 'Farcaster ID of the token requestor - filtered to 1049503';
+COMMENT ON COLUMN clanker_tokens.requestor_fid IS 'Requestor FID from Clanker API - filtered to 1049503';
 COMMENT ON COLUMN clanker_tokens.contract_address IS 'Unique token contract address on the blockchain';
 COMMENT ON COLUMN clanker_tokens.starting_market_cap IS 'Initial market capitalization in the quote token';
 COMMENT ON COLUMN clanker_tokens.inserted_at IS 'When this record was first inserted into our database';

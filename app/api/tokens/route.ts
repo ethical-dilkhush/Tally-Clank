@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
 // Simple cache to avoid repeated API calls
-const warpcastCache = new Map()
 const tokenCache = new Map()
 let lastFetchTime = 0
 const CACHE_TTL = 1000 // 1 second cache TTL
@@ -23,7 +22,6 @@ export async function GET(request: Request) {
     const now = Date.now()
 
     if (!forceRefresh && tokenCache.has(cacheKey) && now - lastFetchTime < CACHE_TTL) {
-      console.log("Returning cached token data")
       return tokenCache.get(cacheKey)
     }
 
@@ -31,8 +29,6 @@ export async function GET(request: Request) {
     // Add a timestamp to bust any caching
     const clankerApiUrl = `https://www.clanker.world/api/tokens?page=${page}&limit=${limit}&_t=${now}`
     
-    console.log(`Fetching tokens from Clanker API: ${clankerApiUrl}`)
-
     const response = await fetch(clankerApiUrl, {
       headers: {
         "Content-Type": "application/json",
@@ -93,9 +89,6 @@ export async function GET(request: Request) {
 
     const rawData = await response.json()
 
-    // Log the raw data to see what we're getting
-    console.log("Raw API response:", JSON.stringify(rawData).substring(0, 500) + "...")
-
     // Determine the structure of the data and extract the tokens array
     let tokensArray = []
     let totalCount = 0 // Default total count if not provided by API
@@ -150,67 +143,12 @@ export async function GET(request: Request) {
           explorer: token.explorer || "",
           createdAt: token.created_at || token.createdAt || token.timestamp || Date.now(),
           requestor_fid: token.requestor_fid || null,
+          metadata: token.metadata || null,
+          msg_sender: token.msg_sender || null,
+          tags: token.tags || null,
         }
 
-        // Only fetch Warpcast data if we have a requestor_fid
-        let warpcastData = {}
-        if (token.requestor_fid) {
-          const requestor_fid = token.requestor_fid
-
-          // Check cache first
-          if (warpcastCache.has(requestor_fid)) {
-            warpcastData = warpcastCache.get(requestor_fid)
-          } else {
-            // Fetch from Warpcast API
-            try {
-              const warpcastResponse = await fetch(`https://api.warpcast.com/v2/user?fid=${requestor_fid}`, {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              })
-
-              if (warpcastResponse.ok) {
-                const responseText = await warpcastResponse.text()
-                let warpcastResponseData: any = {}
-
-                try {
-                  warpcastResponseData = JSON.parse(responseText)
-                  console.log("Warpcast API response:", JSON.stringify(warpcastResponseData).substring(0, 500) + "...")
-
-                  if (warpcastResponseData.users && warpcastResponseData.users.length > 0) {
-                    const user = warpcastResponseData.users[0]
-                    warpcastData = {
-                      warpcast_username: user.username || "",
-                      warpcast_display_name: user.display_name || "",
-                      warpcast_profile: user.profile?.bio?.text || "",
-                      warpcast_pfp_url: user.pfp?.url || "",
-                      warpcast_follower_count: user.follower_count || 0,
-                      warpcast_following_count: user.following_count || 0,
-                    }
-
-                    // Cache the result
-                    warpcastCache.set(requestor_fid, warpcastData)
-                  }
-                } catch (parseError) {
-                  console.error("Error parsing Warpcast API response:", parseError)
-                  console.log("Raw response:", responseText.substring(0, 200))
-                  // Continue with default empty warpcastData
-                }
-              } else {
-                console.error("Error fetching Warpcast data:", warpcastResponse.status)
-                // Continue with default empty warpcastData
-              }
-            } catch (error) {
-              console.error("Error fetching Warpcast data:", error)
-              // Continue with default empty warpcastData
-            }
-          }
-        }
-
-        return {
-          ...processedToken,
-          ...warpcastData,
-        }
+        return processedToken
       }),
     )
 

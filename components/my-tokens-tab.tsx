@@ -2,38 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useAccount } from "wagmi"
-import TokenCard from "@/components/token-card"
+import TokenTable, { type TokenTableToken } from "@/components/token-table"
 import { Button } from "@/components/ui/button"
 import { Loader2, Wallet, RefreshCw, AlertCircle } from "lucide-react"
 
-interface Token {
-  id: string
-  name: string
-  symbol: string
-  price: number
-  marketCap: number
-  volume: number
-  change24h: number
-  imageUrl: string
-  img_url?: string
-  cast_hash?: string
-  contractAddress?: string
-  contract_address?: string
-  blockchain?: string
-  totalSupply?: number
-  circulatingSupply?: number
-  description?: string
-  website?: string
-  explorer?: string
-  createdAt?: string | number
-  deployed_at?: string
-  starting_market_cap?: number
-}
-
 interface MyTokensTabProps {
-  onTokenClick: (token: Token) => void
-  wishlistedTokens: Token[]
-  onWishlistToggle: (token: Token) => void
+  wishlistedTokens: TokenTableToken[]
+  onWishlistToggle: (token: TokenTableToken) => void
 }
 
 interface PaginationData {
@@ -42,9 +17,9 @@ interface PaginationData {
   total: number
 }
 
-export default function MyTokensTab({ onTokenClick, wishlistedTokens, onWishlistToggle }: MyTokensTabProps) {
+export default function MyTokensTab({ wishlistedTokens, onWishlistToggle }: MyTokensTabProps) {
   const { address, isConnected } = useAccount()
-  const [tokens, setTokens] = useState<Token[]>([])
+  const [tokens, setTokens] = useState<TokenTableToken[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -79,8 +54,8 @@ export default function MyTokensTab({ onTokenClick, wishlistedTokens, onWishlist
 
       const data = await response.json()
 
-      // Transform data to match our Token interface
-      const transformedTokens = (data.data || []).map((token: any) => ({
+      // Transform data to match our token interface
+      const transformedTokens = (data.data || []).map((token: { id?: string; _id?: string; name?: string; symbol?: string; price?: number; starting_market_cap?: number; marketCap?: number; volume?: number; change24h?: number; img_url?: string; imageUrl?: string; cast_hash?: string; contract_address?: string; contractAddress?: string; chain_id?: number; metadata?: { description?: string }; deployed_at?: string; created_at?: string }) => ({
         id: token.id || token._id || String(Math.random()),
         name: token.name || 'Unknown Token',
         symbol: token.symbol || '???',
@@ -213,18 +188,12 @@ export default function MyTokensTab({ onTokenClick, wishlistedTokens, onWishlist
         </Button>
       </div>
 
-      {/* Token Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {tokens.map((token) => (
-          <TokenCard
-            key={token.id}
-            token={token}
-            onClick={onTokenClick}
-            isWishlisted={wishlistedTokens.some(w => w.id === token.id)}
-            onWishlistToggle={onWishlistToggle}
-          />
-        ))}
-      </div>
+      {/* Token Table */}
+      <TokenTable
+        tokens={tokens}
+        wishlistedTokens={wishlistedTokens}
+        onWishlistToggle={onWishlistToggle}
+      />
 
       {/* Load More Button */}
       {pagination.hasMore && (
