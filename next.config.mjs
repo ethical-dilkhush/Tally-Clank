@@ -27,6 +27,7 @@ const nextConfig = {
         __dirname,
         "lib/async-storage-stub.js"
       ),
+      "pino-pretty": path.resolve(__dirname, "lib/pino-pretty-stub.js"),
     }
     return config
   },
