@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'x-api-key': 'tally-clank-nlv03n8n20fn09n9c2n081',
+          'x-api-key': process.env.CLANKER_API_KEY as string,
         },
       }
     );

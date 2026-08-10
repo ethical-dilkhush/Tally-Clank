@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const response = await fetch(`https://www.clanker.world/api/tokens/search?q=${encodeURIComponent(query)}`, {
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": "tally-clank-nlv03n8n20fn09n9c2n081",
+        "x-api-key": process.env.CLANKER_API_KEY as string,
       },
       next: { revalidate: 0 }, // Disable cache to ensure fresh results
     })

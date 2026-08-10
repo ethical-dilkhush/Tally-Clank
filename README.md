@@ -1,6 +1,7 @@
 # Tally Clank
 
 Tally Clank is a real-time token sniping and deployment platform built to solve major limitations in the [Clanker.world](https://clanker.world) ecosystem. It gives users the ability to buy newly launched tokens instantly, automate their buys, and even launch tokens directly on the Base blockchain — all from a single, easy-to-use interface.
+[https://github.com/ethical-dilkhush/Tally-Clank](https://github.com/ethical-dilkhush/Tally-Clank)
 
 ---
 
@@ -89,7 +90,7 @@ This project is licensed under the MIT License.
 
 ## Contact
 
-For support or collaboration, reach out via X (Twitter) at(https://twitter.com/yourhandle)
+For support or collaboration, reach out via X (Twitter): https://twitter.com/yourhandle
 
 
 # 🚀 Clanker Database Sync - Quick Setup Summary
@@ -121,7 +122,7 @@ Create `.env.local` in your project root:
 # Existing variables (keep these)
 PINATA_JWT=your_existing_jwt
 PINATA_GATEWAY_URL=orange-electronic-iguana-442.mypinata.cloud
-CLANKER_API_KEY=tally-clank-nlv03n8n20fn09n9c2n081
+CLANKER_API_KEY=your_clanker_api_key
 
 # Add these new Supabase variables
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
@@ -199,11 +200,11 @@ Create a `.env.local` file in your project root with the following variables:
 
 ```env
 # Pinata IPFS Configuration (using v3 API)
-PINATA_JWT=your_pinata_jwt_token_here
+PINATA_JWT=your_pinata_jwt
 PINATA_GATEWAY_URL=orange-electronic-iguana-442.mypinata.cloud
 
 # Clanker API Configuration
-CLANKER_API_KEY=tally-clank-nlv03n8n20fn09n9c2n081
+CLANKER_API_KEY=your_clanker_api_key
 ```
 
 ## Getting API Keys

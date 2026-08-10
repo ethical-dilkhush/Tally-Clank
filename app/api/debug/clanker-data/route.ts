@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const CLANKER_API_KEY = 'tally-clank-nlv03n8n20fn09n9c2n081';
+const CLANKER_API_KEY = process.env.CLANKER_API_KEY as string;
 const CLANKER_API_BASE_URL = 'https://www.clanker.world/api/tokens';
 const TARGET_REQUESTOR_FID = 1049503;
 

@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const response = await fetch(clankerApiUrl, {
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": "tally-clank-nlv03n8n20fn09n9c2n081",
+        "x-api-key": process.env.CLANKER_API_KEY as string,
         "Cache-Control": "no-cache, no-store, must-revalidate",
         Pragma: "no-cache",
         Expires: "0",
